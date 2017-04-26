@@ -10,7 +10,11 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import com.example.u0094350.photogallery.Util.EndlessRecyclerViewScrollListener;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -27,6 +31,30 @@ public class PhotoGalleryFragment extends Fragment{
     private RecyclerView mPhotoRecyclerView;
     private List<GalleryItem> mItems = new ArrayList<>();
 
+    private EndlessRecyclerViewScrollListener scrollListener;
+
+    private int mGridColumns;
+    private GridLayoutManager mGridlayoutManager;
+    private int COLUMN_SIZE = 300;
+
+    private int pageCounts;
+
+
+    //The minimum number of items to have below your current scroll position
+    // before loading more.
+    private int visibleThreshold = 5;
+    // The current offset index of data you have loaded
+    private int currentPage = 0;
+    // The total nnumber of items in the dataset after the last load
+    private int previousTotalItemCount = 0;
+    // True if we are still waiting for the last set of data to load
+    private boolean loading = true;
+    // Sets the starting page index
+    private int startingPageIndex = 0;
+
+    //"photos":{"page":4,"pages":10,"perpage":100,"total":1000,"photo":
+    private int totalItemCount = 1000;
+
 
     public static PhotoGalleryFragment newInstance(){
         return new PhotoGalleryFragment();
@@ -36,6 +64,8 @@ public class PhotoGalleryFragment extends Fragment{
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
+
+        currentPage = 0;
         new FetchItemsTask().execute();
     }
 
@@ -51,6 +81,50 @@ public class PhotoGalleryFragment extends Fragment{
         mPhotoRecyclerView.setLayoutManager(new GridLayoutManager(getActivity(), 3));
         setupAdapter();
 
+        scrollListener = new EndlessRecyclerViewScrollListener((GridLayoutManager)mPhotoRecyclerView.getLayoutManager()) {
+            @Override
+            public void onLoadMore(int page, int totalItemsCount, RecyclerView view) {
+                currentPage = page;
+                new FetchItemsTask().execute();
+                Log.d(TAG, "onLoadMore: currentPage = " + currentPage);
+            }
+        };
+
+        // Adds the scroll listener to RecycleView
+        mPhotoRecyclerView.addOnScrollListener(scrollListener);
+
+        mPhotoRecyclerView.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+            @Override
+            public void onGlobalLayout() {
+                mPhotoRecyclerView.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+                // Adjust the columns to fit based on width of RecyclerView
+                int width = mPhotoRecyclerView.getWidth();
+                mGridColumns = width / COLUMN_SIZE;
+                mGridlayoutManager = new GridLayoutManager(getActivity(), mGridColumns);
+                mPhotoRecyclerView.setLayoutManager(mGridlayoutManager);
+                setupAdapter();
+            }
+        });
+
+
+/*
+        mPhotoRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            GridLayoutManager mGridLayoutManager = (GridLayoutManager)mPhotoRecyclerView.getLayoutManager();
+
+            @Override
+            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+                int lastPosition = mGridLayoutManager.findLastVisibleItemPosition();
+                if(lastPosition == mItems.size() - 3){
+                    Toast.makeText(getActivity(), "Bottom", Toast.LENGTH_SHORT).show();
+                    ++currentPage;
+                   new FetchItemsTask().execute();
+                  //  Log.d(TAG, "onScrolled: current page = " + currentPage + " dy = " + dy);
+                }
+                Log.d(TAG, "onScrolled: current page = " + currentPage + " dy = " + dy);
+
+            }
+        });
+*/
         return v;
     }
 
@@ -71,7 +145,7 @@ public class PhotoGalleryFragment extends Fragment{
 //                Log.e(TAG, "doInBackground: Failed to fetch URL: ", ioe);
 //            }
 
-            return new FlickrFetchr().fetchItems();
+            return new FlickrFetchr().fetchItems(currentPage);
 
         }
 
