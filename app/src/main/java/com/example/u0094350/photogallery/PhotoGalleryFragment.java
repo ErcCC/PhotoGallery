@@ -29,6 +29,7 @@ public class PhotoGalleryFragment extends Fragment{
 
     private RecyclerView mPhotoRecyclerView;
     private List<GalleryItem> mItems = new ArrayList<>();
+    private ThumbnailDownloader<PhotoHolder> mThumbnailDownloader;
 
     private EndlessRecyclerViewScrollListener scrollListener;
 
@@ -66,6 +67,11 @@ public class PhotoGalleryFragment extends Fragment{
 
         currentPage = 0;
         new FetchItemsTask().execute();
+        
+        mThumbnailDownloader = new ThumbnailDownloader<>();
+        mThumbnailDownloader.start();
+        mThumbnailDownloader.getLooper();
+        Log.i(TAG, "Background thread started");
     }
 
     @Nullable
@@ -125,6 +131,13 @@ public class PhotoGalleryFragment extends Fragment{
         });
 */
         return v;
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        mThumbnailDownloader.quit();
+        Log.i(TAG, "Background thread destroyed");
     }
 
     private void setupAdapter() {
