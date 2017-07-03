@@ -135,10 +135,20 @@ public class PhotoGalleryFragment extends Fragment{
 
     @Override
     public void onDestroy() {
+        Log.i(TAG, "Background thread destroyed before super");
         super.onDestroy();
+        Log.i(TAG, "Background thread destroyed after super.onDestroy()");
         mThumbnailDownloader.quit();
         Log.i(TAG, "Background thread destroyed");
     }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        Log.i(TAG, "onPause: you are here , Background");
+    }
+    
+    
 
     private void setupAdapter() {
         if(isAdded()){
@@ -210,6 +220,7 @@ public class PhotoGalleryFragment extends Fragment{
 //            photoHolder.bindGalleryItem(galleryItem);
             Drawable placeholder = getResources().getDrawable(R.drawable.koala_small);
             photoHolder.bindDrawable(placeholder);
+            mThumbnailDownloader.queueThumbnail(photoHolder, galleryItem.getUrl());
         }
 
         @Override
