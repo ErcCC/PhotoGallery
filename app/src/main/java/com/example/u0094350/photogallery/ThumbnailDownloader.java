@@ -1,5 +1,7 @@
 package com.example.u0094350.photogallery;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
@@ -22,9 +24,21 @@ public class ThumbnailDownloader<T> extends HandlerThread {
 
     private Handler mRequestHandler;
     private ConcurrentMap<T, String> mRequestMap = new ConcurrentHashMap<>();
+    private Handler mResponseHanlder;
+    private ThumbnailDownloadListener<T> mThumbnailDownloadListener;
 
-    public ThumbnailDownloader() {
+
+    public interface ThumbnailDownloadListener<T> {
+        void onThumbnailDownloaded(T target, Bitmap thumbnail);
+    }
+
+    public void setThumbnailDownloadListener(ThumbnailDownloadListener<T> listener){
+        mThumbnailDownloadListener = listener;
+    }
+
+    public ThumbnailDownloader(Handler responseHandler) {
         super(TAG);
+        mResponseHanlder = responseHandler;
     }
 
     @Override
@@ -67,9 +81,33 @@ public class ThumbnailDownloader<T> extends HandlerThread {
                 return;
             }
 
-            // add here...
+            byte[] bitemapBytes = new FlickrFetchr().getUrlBytes(url);
+            final Bitmap bitmap = BitmapFactory
+                    .decodeByteArray(bitemapBytes, 0, bitemapBytes.length);
+            Log.i(TAG, "handleRequest: Bitmap created");
+
+            mResponseHanlder.post(new Runnable() {
+                @Override
+                public void run() {
+                    if(mRequestMap.get(target) != url ||
+                            mHasQuit){
+                        return;
+                    }
+
+                    mRequestMap.remove(target);
+                    mThumbnailDownloadListener.onThumbnailDownloaded(target, bitmap);
+
+                }
+            });
+                    
+                    
         } catch (IOException ioe){
             Log.e(TAG, "handleRequest: Error downloading image", ioe);
         }
+    }
+
+    public void clearQueue(){
+        mRequestHandler.removeMessages(MESSAGE_DOWNLOAD);
+        mRequestMap.clear();
     }
 }
