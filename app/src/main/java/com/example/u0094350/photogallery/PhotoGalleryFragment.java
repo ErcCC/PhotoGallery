@@ -11,8 +11,12 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.SearchView;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
@@ -68,9 +72,11 @@ public class PhotoGalleryFragment extends Fragment{
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
+        setHasOptionsMenu(true);
 
         currentPage = 0;
-        new FetchItemsTask().execute();
+        //new FetchItemsTask().execute();
+        updateItems();
 
         Handler responseHandler = new Handler();
 
@@ -89,6 +95,36 @@ public class PhotoGalleryFragment extends Fragment{
 
 
     }
+
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        super.onCreateOptionsMenu(menu, inflater);
+        inflater.inflate(R.menu.fragment_photo_gallery, menu);
+
+        MenuItem searchItem = menu.findItem(R.id.menu_item_search);
+        final SearchView searchView = (SearchView) searchItem.getActionView();
+
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                Log.d(TAG, "onQueryTextSubmit: " + query);
+                updateItems();
+
+                return true;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                Log.d(TAG, "onQueryTextChange: " + newText);
+                return false;
+            }
+        });
+    }
+
+    private void updateItems() {
+        new FetchItemsTask().execute();
+    }
+
 
     @Nullable
     @Override
@@ -189,7 +225,14 @@ public class PhotoGalleryFragment extends Fragment{
 //                Log.e(TAG, "doInBackground: Failed to fetch URL: ", ioe);
 //            }
 
-            return new FlickrFetchr().fetchItems(currentPage);
+            //return new FlickrFetchr().fetchItems(currentPage);
+            String query = "robot"; // Just for testing
+
+            if(query == null){
+                return new FlickrFetchr().fetchRecentPhotos(currentPage);
+            } else {
+                return new FlickrFetchr().searchPhotos(query);
+            }
 
         }
 
