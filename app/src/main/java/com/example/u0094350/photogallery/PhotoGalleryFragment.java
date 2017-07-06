@@ -1,6 +1,8 @@
 package com.example.u0094350.photogallery;
 
 import android.app.ActivityManager;
+import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
@@ -13,10 +15,12 @@ import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.SearchView;
 import android.util.Log;
+import android.view.GestureDetector;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
@@ -78,6 +82,9 @@ public class PhotoGalleryFragment extends Fragment{
         //new FetchItemsTask().execute();
         updateItems();
 
+        Intent i = PollService.newIntent(getActivity());
+        getActivity().startService(i);
+
         Handler responseHandler = new Handler();
 
         mThumbnailDownloader = new ThumbnailDownloader<>(responseHandler);
@@ -120,7 +127,7 @@ public class PhotoGalleryFragment extends Fragment{
                 return false;
             }
         });
-        
+
 
         searchView.setOnSearchClickListener(new View.OnClickListener() {
             @Override
@@ -187,6 +194,30 @@ public class PhotoGalleryFragment extends Fragment{
                 setupAdapter();
             }
         });
+        
+        
+        mPhotoRecyclerView.addOnItemTouchListener(new RecyclerTouchListener(
+                getActivity(), 
+                mPhotoRecyclerView,
+                new ClickListener(){
+
+            @Override
+            public void onClick(View view, int position) {
+                Log.i(TAG, "onClick: position = " + position);
+                GalleryItem clickedItem = mItems.get(position);
+                Log.i(TAG, "onClick: url =" + clickedItem.getUrl());
+                Intent myIntent = new Intent(getActivity(), PhotoActivity.class);
+                myIntent.putExtra("url", clickedItem.getUrl());
+                startActivity(myIntent);
+                
+            }
+
+            @Override
+            public void onLongClick(View view, int position) {
+                Log.i(TAG, "onLongClick: is pressed!!");
+
+            }
+        }));
 
 
 /*
@@ -206,7 +237,10 @@ public class PhotoGalleryFragment extends Fragment{
 
             }
         });
+        
 */
+
+    
         return v;
     }
 
@@ -322,6 +356,56 @@ public class PhotoGalleryFragment extends Fragment{
         @Override
         public int getItemCount() {
             return mGalleryItems.size();
+        }
+    }
+
+
+    //https://medium.com/@harivigneshjayapalan/android-recyclerview-implementing-single-item-click-and-long-press-part-ii-b43ef8cb6ad8
+    public static interface ClickListener{
+        public void onClick(View view, int position);
+        public void onLongClick(View view, int position);
+    }
+
+    class RecyclerTouchListener implements RecyclerView.OnItemTouchListener{
+        private ClickListener clickListener;
+        private GestureDetector gestureDetector;
+
+        public RecyclerTouchListener(Context context, final RecyclerView recycleView, final ClickListener clicklistener){
+
+            this.clickListener=clicklistener;
+            gestureDetector=new GestureDetector(context,new GestureDetector.SimpleOnGestureListener(){
+                @Override
+                public boolean onSingleTapUp(MotionEvent e) {
+                    return true;
+                }
+
+                @Override
+                public void onLongPress(MotionEvent e) {
+                    View child=recycleView.findChildViewUnder(e.getX(),e.getY());
+                    if(child!=null && clicklistener!=null){
+                        clicklistener.onLongClick(child,recycleView.getChildAdapterPosition(child));
+                    }
+                }
+            });
+        }
+
+        @Override
+        public boolean onInterceptTouchEvent(RecyclerView rv, MotionEvent e) {
+            View child=rv.findChildViewUnder(e.getX(),e.getY());
+            if(child!=null && clickListener!=null && gestureDetector.onTouchEvent(e)){
+                clickListener.onClick(child,rv.getChildAdapterPosition(child));
+            }
+            return false;
+        }
+
+        @Override
+        public void onTouchEvent(RecyclerView rv, MotionEvent e) {
+
+        }
+
+        @Override
+        public void onRequestDisallowInterceptTouchEvent(boolean disallowIntercept) {
+
         }
     }
 }
