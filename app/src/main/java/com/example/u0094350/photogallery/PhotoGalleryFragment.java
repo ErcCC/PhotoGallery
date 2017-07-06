@@ -108,6 +108,7 @@ public class PhotoGalleryFragment extends Fragment{
             @Override
             public boolean onQueryTextSubmit(String query) {
                 Log.d(TAG, "onQueryTextSubmit: " + query);
+                QueryPreferences.setStoredQuery(getActivity(), query);
                 updateItems();
 
                 return true;
@@ -119,12 +120,36 @@ public class PhotoGalleryFragment extends Fragment{
                 return false;
             }
         });
+        
+
+        searchView.setOnSearchClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                String query = QueryPreferences.getStoredQuery(getActivity());
+                searchView.setQuery(query, false);
+            }
+        });
     }
 
     private void updateItems() {
-        new FetchItemsTask().execute();
+        String query = QueryPreferences.getStoredQuery(getActivity());
+
+        new FetchItemsTask(query).execute();
     }
 
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()){
+            case R.id.menu_item_clear:
+                QueryPreferences.setStoredQuery(getActivity(), null);
+                updateItems();
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+
+    }
 
     @Nullable
     @Override
@@ -142,7 +167,7 @@ public class PhotoGalleryFragment extends Fragment{
             @Override
             public void onLoadMore(int page, int totalItemsCount, RecyclerView view) {
                 currentPage = page;
-                new FetchItemsTask().execute();
+                new FetchItemsTask(null).execute();
                 Log.d(TAG, "onLoadMore: currentPage = " + currentPage);
             }
         };
@@ -215,6 +240,12 @@ public class PhotoGalleryFragment extends Fragment{
     }
 
     private class FetchItemsTask extends AsyncTask<Void, Void, List<GalleryItem>> {
+        private String mQuery;
+
+        public FetchItemsTask(String query){
+            mQuery = query;
+        }
+
         @Override
         protected List<GalleryItem> doInBackground(Void... params) {
 //            try{
@@ -226,12 +257,12 @@ public class PhotoGalleryFragment extends Fragment{
 //            }
 
             //return new FlickrFetchr().fetchItems(currentPage);
-            String query = "robot"; // Just for testing
+           // String query = "robot"; // Just for testing
 
-            if(query == null){
+            if(mQuery == null){
                 return new FlickrFetchr().fetchRecentPhotos(currentPage);
             } else {
-                return new FlickrFetchr().searchPhotos(query);
+                return new FlickrFetchr().searchPhotos(mQuery);
             }
 
         }
