@@ -1,15 +1,19 @@
 package com.example.u0094350.photogallery;
 
+import android.app.AlarmManager;
 import android.app.IntentService;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.net.ConnectivityManager;
+import android.os.SystemClock;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
 import com.example.u0094350.photogallery.Util.NetworkUtil;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Created by DWalker on 7/5/17.
@@ -18,6 +22,9 @@ import java.util.List;
 public class PollService extends IntentService{
     private static final String TAG = "PollService";
 
+    // Set interval to 1 minute
+    private static final long POLL_INTERVAL_MS = TimeUnit.MINUTES.toMillis(1);
+
 
     public static Intent newIntent(Context context){
         return new Intent(context, PollService.class);
@@ -25,6 +32,32 @@ public class PollService extends IntentService{
 
     public PollService() {
         super(TAG);
+    }
+
+    public static void setServiceAlarm(Context context, boolean isOn){
+        Intent i = PollService.newIntent(context);
+        PendingIntent pi = PendingIntent.getService(context,0, i, 0);
+
+        AlarmManager alarmManager = (AlarmManager)
+                context.getSystemService(Context.ALARM_SERVICE);
+
+        if(isOn){
+            alarmManager.setRepeating(AlarmManager.ELAPSED_REALTIME,
+                    SystemClock.elapsedRealtime(),
+                    POLL_INTERVAL_MS,
+                    pi);
+        } else {
+            alarmManager.cancel(pi);
+            pi.cancel();
+        }
+    }
+
+    public static boolean isServiceAlarmOn(Context contxt){
+        Intent i = PollService.newIntent(contxt);
+
+        PendingIntent pi = PendingIntent.getService(contxt, 0, i, PendingIntent.FLAG_NO_CREATE);
+
+        return pi != null;
 
     }
 
